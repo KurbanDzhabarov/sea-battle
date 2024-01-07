@@ -129,6 +129,7 @@ class Board:
         else:
             if self.cels[dot.x][dot.y] == "■":
                 self.cels[dot.x][dot.y] = "X"
+
             else:
                 self.cels[dot.x][dot.y] = "*"
             return self.cels[dot.x][dot.y] == "■"
@@ -175,10 +176,20 @@ class Ai(Player):
 class User(Player):
     """Класс - наследник класса игрок. Представляет игрока"""
     def ask(self):
-        a = input("Введите ход (например A1, B3): ").upper()
-        board_dict = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5}
-        x = board_dict[a[0]]
-        y = int(a[1:]) - 1
+        while True:
+            a = input("Введите ход (например A1, B3): ").upper()
+            if a.upper() not in ["A1", "A2", "A3", "A4", "A5", "A6",
+                             "B1", "B2", "B3", "B4", "B5", "B6",
+                             "C1", "C2", "C3", "C4", "C5", "C6",
+                             "D1", "D2", "D3", "D4", "D5", "D6",
+                             "E1", "E2", "E3", "E4", "E5", "E6"
+                             "F1", "F2", "F3", "F4", "F5", "F6"]:
+                print("Вы ввели неверный ход, попробуйте снова!")
+            else:
+                board_dict = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5}
+                x = board_dict[a[0]]
+                y = int(a[1:]) - 1
+                break
         return Dot(y, x)
 
 
