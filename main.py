@@ -73,6 +73,7 @@ class Board:
         self.marker_cels = []
         self.ships = []
         self.ships_count = 0
+        self.last_ship = None
         self.mask = {"0": "?",
                      "■": "?"}
 
@@ -91,13 +92,6 @@ class Board:
 
         else:
             raise CantcreateboardException
-
-    def clear_board(self):
-        self.cels = [["0" for i in range(6)] for j in range(6)]
-        self.free_cels = [Dot(x, y) for x in range(6) for y in range(6)]
-        self.marker_cels = []
-        self.ships = []
-        self.ships_count = 0
 
     def __str__(self):
         result = "   A|B|C|D|E|F\n"
@@ -122,24 +116,36 @@ class Board:
             if not self.out(dot) and dot in self.free_cels:
                 self.marker_cels.append(dot)
                 self.free_cels.remove(dot)
-
+        return dots.difference(set(ship.dots()))
     def shoot(self, dot: Dot):
         if self.out(dot):
             raise BoardOutException
         else:
             if self.cels[dot.x][dot.y] == "■":
                 self.cels[dot.x][dot.y] = "X"
+                for ship in self.ships:
+                    if dot in ship.dots():
+                        ship.hp -= 1
+                        if ship.hp == 0:
+                            self.ships.remove(ship)
+                            self.ships_count -= 1
+                            self.last_ship = ship
+                            print("Ты потопил корабль!")
+
+
+                return True
 
             else:
                 self.cels[dot.x][dot.y] = "*"
-            return self.cels[dot.x][dot.y] == "■"
+                return False
 
 
 class Player:
     """Родительский класс - игрок"""
-    def __init__(self, my_board, enemy_board):
+    def __init__(self, my_board: Board, enemy_board: Board):
         self.my_board = my_board
         self.enemy_board = enemy_board
+        self.shoot_cels = []
 
     def ask(self):
         """переопределять метод ask будем в классе - наследнике"""
@@ -148,19 +154,21 @@ class Player:
     def move(self):
         dot = self.ask()
         try:
+            ships_count = self.enemy_board.ships_count
             if self.enemy_board.shoot(dot):
                 print("Есть пробитие, сделай еще ход!")
-                self.move()
+                if ships_count != self.enemy_board.ships_count:
+                    self.shoot_cels += list(self.enemy_board.contour(self.enemy_board.last_ship))
+                return True
         except BoardOutException:
             print("Ты указал точку за пределами поля, сделай ход заново!")
-            self.move()
+            return True
+        return False
 
 
 class Ai(Player):
     """Класс - наследник класса игрок. Представляет компьютер"""
-    def __init__(self, my_board, enemy_board):
-        super().__init__(my_board, enemy_board)
-        self.shoot_cels = []
+
 
     def ask(self):
         x = randint(0, 5)
@@ -178,18 +186,17 @@ class User(Player):
     def ask(self):
         while True:
             a = input("Введите ход (например A1, B3): ").upper()
-            if a.upper() not in ["A1", "A2", "A3", "A4", "A5", "A6",
-                             "B1", "B2", "B3", "B4", "B5", "B6",
-                             "C1", "C2", "C3", "C4", "C5", "C6",
-                             "D1", "D2", "D3", "D4", "D5", "D6",
-                             "E1", "E2", "E3", "E4", "E5", "E6"
-                             "F1", "F2", "F3", "F4", "F5", "F6"]:
+            board_dict = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5}
+            try:
+                if len(a) < 2 or a[0] not in "ABCDEF" or int(a[1]) not in range(1, 7):
+                    print("Вы ввели неверный ход, попробуйте снова!")
+                else:
+
+                    x = board_dict[a[0]]
+                    y = int(a[1:]) - 1
+                    break
+            except ValueError:
                 print("Вы ввели неверный ход, попробуйте снова!")
-            else:
-                board_dict = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5}
-                x = board_dict[a[0]]
-                y = int(a[1:]) - 1
-                break
         return Dot(y, x)
 
 
@@ -212,7 +219,7 @@ class Game:
         ships = [3, 2, 2, 1, 1, 1, 1]
         while True:
             if target_board.ships_count < 7 and len(target_board.free_cels) == 0:
-                target_board.clear_board()
+                target_board.__init__()
             elif target_board.ships_count == 7:
                 break
 
@@ -232,8 +239,10 @@ class Game:
         print(self.user_board)
         print(self.ai_board)
 
-        self.user.move()
-        self.ai.move()
+        while self.user.move():
+            print(self.ai_board)
+        while self.ai.move():
+            print(self.user_board)
 
         if self.user_board.ships_count == 0:
             print("Победил компьютер!")
